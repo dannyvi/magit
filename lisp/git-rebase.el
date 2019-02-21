@@ -62,6 +62,10 @@
 ;;   RET      Show the commit at point in another buffer and
 ;;            select its window.
 ;;   C-/      Undo last change.
+;;
+;;   Commands for --rebase-merges:
+;;   l        Associate label with current HEAD in sequence.
+;;   t        Reset HEAD to the specified label.
 
 ;; You should probably also read the `git-rebase' manpage.
 
@@ -157,12 +161,14 @@
            (define-key map (kbd "C-k") 'git-rebase-kill-line)))
     (define-key map (kbd "b") 'git-rebase-break)
     (define-key map (kbd "e") 'git-rebase-edit)
+    (define-key map (kbd "l") 'git-rebase-label)
     (define-key map (kbd "m") 'git-rebase-edit)
     (define-key map (kbd "f") 'git-rebase-fixup)
     (define-key map (kbd "q") 'undefined)
     (define-key map (kbd "r") 'git-rebase-reword)
     (define-key map (kbd "w") 'git-rebase-reword)
     (define-key map (kbd "s") 'git-rebase-squash)
+    (define-key map (kbd "t") 'git-rebase-reset)
     (define-key map (kbd "x") 'git-rebase-exec)
     (define-key map (kbd "y") 'git-rebase-insert)
     (define-key map (kbd "z") 'git-rebase-noop)
@@ -249,14 +255,16 @@
   '((?b . "break")
     (?e . "edit")
     (?f . "fixup")
+    (?l . "label")
     (?p . "pick")
     (?r . "reword")
     (?s . "squash")
+    (?t . "reset")
     (?x . "exec"))
   "Alist mapping single-key for an action to the full name.")
 
 (defclass git-rebase-action ()
-  (;; action-type: commit, exec, bare
+  (;; action-type: commit, exec, bare, label
    (action-type    :initarg :action-type    :initform nil)
    ;; Examples for each action type:
    ;; | action | action options | target  | trailer |
@@ -264,6 +272,7 @@
    ;; | pick   |                | hash    | subject |
    ;; | exec   |                | command |         |
    ;; | noop   |                |         |         |
+   ;; | reset  |                | name    | subject |
    (action         :initarg :action         :initform nil)
    (action-options :initarg :action-options :initform nil)
    (target         :initarg :target         :initform nil)
@@ -472,10 +481,11 @@ remove the command on the current line, if any."
    arg))
 
 (defun git-rebase-label (arg)
-  "Add a label after the proceeding commit.
+  "Add a label after the current commit.
 If there already is a label on the current line, then edit that
-instead.  With empty input remove the label on the current line,
-if any."
+instead.  With a prefix argument, insert a new label even when
+there is already a label on the current line.  With empty input,
+remove the label on the current line, if any."
   (interactive "P")
   (git-rebase-set-noncommit-action
    "label"
@@ -493,6 +503,11 @@ if any."
     (nreverse labels)))
 
 (defun git-rebase-reset (arg)
+  "Reset the current HEAD to a label.
+If there already is a reset command on the current line, then
+edit that instead.  With a prefix argument, insert a new reset
+line even when point is already on a reset line.  With empty
+input, remove the reset command on the current line, if any."
   (interactive "P")
   (git-rebase-set-noncommit-action
    "reset"
