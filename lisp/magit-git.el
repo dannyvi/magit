@@ -1513,8 +1513,18 @@ SORTBY is a key or list of keys to pass to the `--sort' flag of
                         name)))
             (magit-git-lines "show-ref"))))
 
-(defun magit-list-refnames (&optional namespaces)
+(defun magit-list-refnames (&optional namespaces) ; TODO? ... heads ats)
   (magit-list-refs namespaces "%(refname:short)"))
+
+;; TODO? (defvar magit-at-refnames '("@{upstream}" ...))
+(defvar magit-head-refnames
+  '("HEAD" "ORIG_HEAD" "FETCH_HEAD" "MERGE_HEAD" "CHERRY_PICK_HEAD"))
+(defun magit-list-head-refnames ()
+  (let ((gitdir (magit-gitdir)))
+    (cl-mapcan (lambda (name)
+                 (and (file-exists-p (expand-file-name name gitdir))
+                      (list name)))
+               magit-head-refnames)))
 
 (defun magit-list-branch-names ()
   (magit-list-refnames (list "refs/heads" "refs/remotes")))
@@ -1529,12 +1539,6 @@ SORTBY is a key or list of keys to pass to the `--sort' flag of
                     (list (match-string 1 it)))
                   (magit-list-remote-branches remote)))
     (magit-list-refnames (concat "refs/remotes/" remote))))
-
-(defun magit-list-rev-pointers ()
-  (delq nil (list
-             "HEAD"
-             (and (file-exists-p (magit-git-dir "ORIG_HEAD")) "ORIG_HEAD")
-             (and (file-exists-p (magit-git-dir "FETCH_HEAD")) "FETCH_HEAD"))))
 
 (defun magit-format-refs (format &rest args)
   (let ((lines (magit-git-lines
@@ -1963,7 +1967,7 @@ and this option only controls what face is used.")
 (defun magit-read-branch-or-commit (prompt &optional secondary-default)
   (or (magit-completing-read prompt
                              (nconc (magit-list-refnames)
-                                    (magit-list-rev-pointers))
+                                    (magit-list-head-refnames))
                              nil nil nil 'magit-revision-history
                              (or (magit-branch-or-commit-at-point)
                                  secondary-default
@@ -2016,7 +2020,7 @@ and this option only controls what face is used.")
 
 (defun magit-read-local-branch-or-commit (prompt)
   (let ((choices (nconc (magit-list-local-branch-names)
-                        (magit-list-rev-pointers)))
+                        (magit-list-head-refnames)))
         (commit (magit-commit-at-point)))
     (when commit
       (push commit choices))
