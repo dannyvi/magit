@@ -1530,6 +1530,12 @@ SORTBY is a key or list of keys to pass to the `--sort' flag of
                   (magit-list-remote-branches remote)))
     (magit-list-refnames (concat "refs/remotes/" remote))))
 
+(defun magit-list-rev-pointers ()
+  (delq nil (list
+             "HEAD"
+             (and (file-exists-p (magit-git-dir "ORIG_HEAD")) "ORIG_HEAD")
+             (and (file-exists-p (magit-git-dir "FETCH_HEAD")) "FETCH_HEAD"))))
+
 (defun magit-format-refs (format &rest args)
   (let ((lines (magit-git-lines
                 "for-each-ref" (concat "--format=" format)
@@ -1955,7 +1961,9 @@ and this option only controls what face is used.")
                              (magit-get-current-branch))))
 
 (defun magit-read-branch-or-commit (prompt &optional secondary-default)
-  (or (magit-completing-read prompt (cons "HEAD" (magit-list-refnames))
+  (or (magit-completing-read prompt
+                             (nconc (magit-list-refnames)
+                                    (magit-list-rev-pointers))
                              nil nil nil 'magit-revision-history
                              (or (magit-branch-or-commit-at-point)
                                  secondary-default
@@ -2007,10 +2015,12 @@ and this option only controls what face is used.")
                              (magit-get-current-branch))))
 
 (defun magit-read-local-branch-or-commit (prompt)
-  (let ((branches (magit-list-local-branch-names))
+  (let ((choices (nconc (magit-list-local-branch-names)
+                        (magit-list-rev-pointers)))
         (commit (magit-commit-at-point)))
-    (or (magit-completing-read prompt
-                               (if commit (cons commit branches) branches)
+    (when commit
+      (push commit choices))
+    (or (magit-completing-read prompt choices
                                nil nil nil 'magit-revision-history
                                (or (magit-local-branch-at-point) commit))
                      (user-error "Nothing selected"))))
